@@ -14,7 +14,8 @@ const INITIAL_DATA: AppData = {
   adminPass: 'Voi123'
 };
 
-const DEFAULT_BG = "https://images.unsplash.com/photo-1511895426328-dc8714191300?q=80&w=2070&auto=format&fit=crop"; 
+// Đã xóa link ảnh mặc định. Nếu bạn muốn mặc định là một chuỗi Base64 cụ thể, hãy dán vào giữa hai dấu ngoặc kép bên dưới.
+const DEFAULT_BG = ""; 
 const CACHE_KEY_BG = 'cached_bg_image';
 
 const App: React.FC = () => {
@@ -31,7 +32,6 @@ const App: React.FC = () => {
   const [customUrl, setCustomUrl] = useState(getApiUrl());
   
   // Ưu tiên cao nhất: Lấy từ LocalStorage ngay khi khởi tạo App
-  // Điều này đảm bảo ảnh CỦA BẠN hiện ngay lập tức, không hiện ảnh mặc định
   const [backgroundImage, setBackgroundImage] = useState(() => {
     const cached = localStorage.getItem(CACHE_KEY_BG);
     return cached && cached !== 'null' && cached !== 'undefined' ? cached : DEFAULT_BG;
@@ -62,7 +62,7 @@ const App: React.FC = () => {
         adminPass: response.adminPass || 'Voi123'
       });
       
-      // Đồng bộ ảnh từ Server về, NHƯNG chỉ cập nhật nếu link hợp lệ
+      // Đồng bộ ảnh từ Server về, NHƯNG chỉ cập nhật nếu link hợp lệ và có nội dung
       if (response.backgroundImage && response.backgroundImage.length > 10) {
         setBackgroundImage(response.backgroundImage);
         localStorage.setItem(CACHE_KEY_BG, response.backgroundImage);
@@ -159,7 +159,6 @@ const App: React.FC = () => {
           setUploadingBg(true);
           try {
             await api.saveSetting('background_image', dataUrl);
-            // Không cần alert làm phiền người dùng trừ khi lỗi
           } catch (error: any) {
             console.error("Lỗi lưu ảnh lên server:", error);
             alert("Đã lưu ảnh trên máy này, nhưng lỗi khi đồng bộ lên Server: " + error.message);
@@ -188,12 +187,11 @@ const App: React.FC = () => {
       localStorage.setItem(CACHE_KEY_BG, url);
       setShowUploadBg(false);
       
-      // 2. Sau đó mới gửi lên Server (để các máy khác cũng thấy)
+      // 2. Sau đó mới gửi lên Server
       try {
         await api.saveSetting('background_image', url);
         alert("Đã cập nhật thành công!");
       } catch (error: any) {
-        // Dù lỗi server thì máy này vẫn hiện ảnh đúng
         alert("Đã lưu link trên máy này, nhưng lỗi khi đồng bộ lên Google Sheet: " + error.message);
       } finally {
         setUploadingBg(false);
@@ -276,12 +274,13 @@ const App: React.FC = () => {
         backgroundSize: '100% 100%',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center',
-        backgroundAttachment: 'fixed'
+        backgroundAttachment: 'fixed',
+        backgroundColor: '#f3f4f6' // Màu nền dự phòng khi không có ảnh
       }}
     >
       <div className="absolute inset-0 bg-white/5 pointer-events-none z-0"></div>
 
-      {/* Sidebar - Trong suốt hơn */}
+      {/* Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white/20 backdrop-blur-sm border-r border-white/20 h-full p-4 shadow-sm z-20">
         <div className="flex items-center gap-2 px-2 mb-8 mt-2">
           <div className="bg-blue-600 text-white p-2 rounded-lg shadow-lg">
@@ -340,7 +339,7 @@ const App: React.FC = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-        {/* Mobile Header - Trong suốt hơn */}
+        {/* Mobile Header */}
         <header className="md:hidden h-16 bg-white/20 backdrop-blur-sm border-b border-white/20 flex items-center justify-between px-4 z-20 sticky top-0">
           <div className="flex items-center gap-2">
              <div className="bg-blue-600 text-white p-1.5 rounded-lg">
