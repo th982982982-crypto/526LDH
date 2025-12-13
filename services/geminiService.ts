@@ -1,0 +1,1 @@
+// This file is deprecated and removed as per user request to remove Google GenAI API.
