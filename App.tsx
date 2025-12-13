@@ -287,7 +287,7 @@ const App: React.FC = () => {
             <Receipt size={24} />
           </div>
           <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-700 drop-shadow-sm">
-            256 Lê Đại Hành
+            526 Lê Đại Hành
           </h1>
         </div>
         
