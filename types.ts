@@ -7,8 +7,12 @@ export interface Transaction {
   type: TransactionType;
   category: string;
   description: string;
-  quantity?: number; // Thêm số lượng
+  quantity?: number; // Số lượng
+  unit?: string; // Đơn vị tính (m3, cái, kg...)
+  unitPrice?: number; // Đơn giá
   image?: string; // Base64 string
+  supplier?: string; // Nhà cung cấp
+  isPaid?: boolean; // Trạng thái thanh toán
 }
 
 export interface Material {
@@ -30,6 +34,9 @@ export interface AppData {
   backgroundImage?: string;
   adminUser?: string;
   adminPass?: string;
+  suppliers: string[]; // Danh sách nhà cung cấp
+  materialNames: string[]; // Danh sách tên vật liệu gợi ý
+  units: string[]; // Danh sách đơn vị tính gợi ý
 }
 
 export type View = 'DASHBOARD' | 'TRANSACTIONS' | 'INVENTORY';

@@ -61,9 +61,11 @@ const sendRequest = async (action: string, data: any = {}) => {
 
 export const api = {
   getData: async () => sendRequest('get_data'),
-  // Gom cả Thêm và Sửa vào 1 hàm save_transaction
   saveTransaction: async (transaction: Transaction) => sendRequest('save_transaction', transaction),
   deleteTransaction: async (id: string) => sendRequest('delete_transaction', { id }),
   updateBudget: async (amount: number) => sendRequest('update_budget', { amount }),
-  saveSetting: async (key: string, value: string) => sendRequest('save_setting', { key, value })
+  saveSetting: async (key: string, value: string) => sendRequest('save_setting', { key, value }),
+  saveSupplierList: async (suppliers: string[]) => sendRequest('save_supplier_list', { suppliers }),
+  saveMaterialList: async (materials: string[]) => sendRequest('save_material_list', { materials }),
+  saveUnitList: async (units: string[]) => sendRequest('save_unit_list', { units })
 };

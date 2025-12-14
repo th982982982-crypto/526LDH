@@ -9,10 +9,13 @@ const INITIAL_DATA: AppData = {
   budget: 0,
   transactions: [],
   adminUser: 'admin', 
-  adminPass: 'Voi123'
+  adminPass: 'Voi123',
+  suppliers: ['Xuân Chí'],
+  materialNames: ['Cát', 'Đá', 'Xi măng'],
+  units: ['m3', 'Xe', 'Bao', 'Kg']
 };
 
-// Đã xóa link ảnh mặc định. Nếu bạn muốn mặc định là một chuỗi Base64 cụ thể, hãy dán vào giữa hai dấu ngoặc kép bên dưới.
+// Đã xóa link ảnh mặc định.
 const DEFAULT_BG = ""; 
 const CACHE_KEY_BG = 'cached_bg_image';
 
@@ -22,11 +25,14 @@ const App: React.FC = () => {
   
   const [data, setData] = useState<AppData>(INITIAL_DATA);
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  
+  // syncingCount helps track multiple async requests
+  const [syncingCount, setSyncingCount] = useState(0);
+  const isSyncing = syncingCount > 0;
+
   const [isConnected, setIsConnected] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   
-  // Ưu tiên cao nhất: Lấy từ LocalStorage ngay khi khởi tạo App
   const [backgroundImage, setBackgroundImage] = useState(() => {
     const cached = localStorage.getItem(CACHE_KEY_BG);
     return cached && cached !== 'null' && cached !== 'undefined' ? cached : DEFAULT_BG;
@@ -43,6 +49,19 @@ const App: React.FC = () => {
   const [uploadingBg, setUploadingBg] = useState(false);
   const [bgUrlInput, setBgUrlInput] = useState(''); 
 
+  // Prevent closing tab when syncing
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isSyncing) {
+        e.preventDefault();
+        e.returnValue = ''; // Yêu cầu của Chrome
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isSyncing]);
+
   const fetchData = async (isBackground = false) => {
     if (!isBackground && data.transactions.length === 0) setLoading(true);
     setErrorMessage('');
@@ -53,10 +72,12 @@ const App: React.FC = () => {
         transactions: response.transactions || [],
         budget: response.budget || 0,
         adminUser: response.adminUser || 'admin',
-        adminPass: response.adminPass || 'Voi123'
+        adminPass: response.adminPass || 'Voi123',
+        suppliers: response.suppliers && response.suppliers.length > 0 ? response.suppliers : ['Xuân Chí'],
+        materialNames: response.materials && response.materials.length > 0 ? response.materials : ['Cát', 'Đá', 'Xi măng'],
+        units: response.units && response.units.length > 0 ? response.units : ['m3', 'Xe', 'Bao', 'Kg']
       });
       
-      // Đồng bộ ảnh từ Server về, NHƯNG chỉ cập nhật nếu link hợp lệ và có nội dung
       if (response.backgroundImage && response.backgroundImage.length > 10) {
         setBackgroundImage(response.backgroundImage);
         localStorage.setItem(CACHE_KEY_BG, response.backgroundImage);
@@ -85,8 +106,9 @@ const App: React.FC = () => {
     }
   }, [showUploadBg, backgroundImage]);
 
+  // Wrapper to track syncing state for blocking navigation
   const handleApiCall = async (apiCall: () => Promise<any>, onSuccess: () => void) => {
-    setSyncing(true);
+    setSyncingCount(prev => prev + 1);
     try {
       await apiCall();
       onSuccess();
@@ -96,9 +118,8 @@ const App: React.FC = () => {
       console.error(err);
       setIsConnected(false);
       setErrorMessage(err.message || "Lỗi khi lưu dữ liệu.");
-      alert("Lỗi: " + (err.message || "Vui lòng kiểm tra kết nối mạng."));
     } finally {
-      setSyncing(false);
+      setSyncingCount(prev => Math.max(0, prev - 1));
     }
   };
 
@@ -134,18 +155,15 @@ const App: React.FC = () => {
           
           const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
           
-          // LƯU NGAY LẬP TỨC (Optimistic Update)
           setBackgroundImage(dataUrl);
           localStorage.setItem(CACHE_KEY_BG, dataUrl);
           setShowUploadBg(false);
           
-          // Sau đó mới gửi lên Server ngầm
           setUploadingBg(true);
           try {
             await api.saveSetting('background_image', dataUrl);
           } catch (error: any) {
             console.error("Lỗi lưu ảnh lên server:", error);
-            alert("Đã lưu ảnh trên máy này, nhưng lỗi khi đồng bộ lên Server: " + error.message);
           } finally {
             setUploadingBg(false);
           }
@@ -159,42 +177,37 @@ const App: React.FC = () => {
   const handleUrlSave = async () => {
     const url = bgUrlInput.trim();
     if (!url) return;
-    
     setUploadingBg(true);
-
     const imgTest = new Image();
     imgTest.src = url;
-
     imgTest.onload = async () => {
-      // 1. Ảnh hợp lệ -> LƯU VÀO MÁY NGAY LẬP TỨC
       setBackgroundImage(url);
       localStorage.setItem(CACHE_KEY_BG, url);
       setShowUploadBg(false);
-      
-      // 2. Sau đó mới gửi lên Server
       try {
         await api.saveSetting('background_image', url);
         alert("Đã cập nhật thành công!");
       } catch (error: any) {
-        alert("Đã lưu link trên máy này, nhưng lỗi khi đồng bộ lên Google Sheet: " + error.message);
+        alert("Đã lưu link trên máy, nhưng lỗi đồng bộ: " + error.message);
       } finally {
         setUploadingBg(false);
       }
     };
-
     imgTest.onerror = () => {
       setUploadingBg(false);
-      alert("Link ảnh lỗi hoặc không cho phép truy cập! Vui lòng thử link khác.");
+      alert("Link ảnh lỗi!");
     };
   };
 
   const addTransaction = (t: Omit<Transaction, 'id'>) => {
     const newTrans: Transaction = { ...t, id: Math.random().toString(36).substr(2, 9) };
+    // Optimistic UI update
     setData(prev => ({ ...prev, transactions: [newTrans, ...prev.transactions] }));
     handleApiCall(() => api.saveTransaction(newTrans), () => {});
   };
 
   const updateTransaction = (t: Transaction) => {
+    // Optimistic UI update
     setData(prev => ({
       ...prev,
       transactions: prev.transactions.map(trans => trans.id === t.id ? t : trans)
@@ -213,17 +226,47 @@ const App: React.FC = () => {
     handleApiCall(() => api.updateBudget(newBudget), () => {});
   };
 
+  const addSupplier = (name: string) => {
+    if (!data.suppliers.includes(name)) {
+      const newSuppliers = [...data.suppliers, name];
+      setData(prev => ({ ...prev, suppliers: newSuppliers }));
+      handleApiCall(() => api.saveSupplierList(newSuppliers), () => {});
+    }
+  };
+
+  const addMaterialName = (name: string) => {
+    if (!data.materialNames.includes(name)) {
+      const newList = [...data.materialNames, name];
+      setData(prev => ({ ...prev, materialNames: newList }));
+      handleApiCall(() => api.saveMaterialList(newList), () => {});
+    }
+  };
+
+  const addUnit = (name: string) => {
+    if (!data.units.includes(name)) {
+      const newList = [...data.units, name];
+      setData(prev => ({ ...prev, units: newList }));
+      handleApiCall(() => api.saveUnitList(newList), () => {});
+    }
+  };
+
   const NavItem = ({ view, icon: Icon, label }: { view: View, icon: any, label: string }) => (
     <button
-      onClick={() => { setCurrentView(view); setIsMobileMenuOpen(false); }}
+      onClick={() => { 
+        if (isSyncing) return; // Prevent navigation when syncing
+        setCurrentView(view); 
+        setIsMobileMenuOpen(false); 
+      }}
+      disabled={isSyncing}
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${
         currentView === view 
           ? 'bg-blue-600/80 text-white shadow-md backdrop-blur-md' 
           : 'text-slate-800 hover:bg-white/30 hover:text-slate-900 hover:backdrop-blur-sm'
-      }`}
+      } ${isSyncing ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       <Icon size={20} />
       <span>{label}</span>
+      {isSyncing && currentView === view && <Loader2 size={16} className="animate-spin ml-auto" />}
     </button>
   );
 
@@ -236,13 +279,13 @@ const App: React.FC = () => {
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',
-        backgroundColor: '#f3f4f6' // Màu nền dự phòng khi không có ảnh
+        backgroundColor: '#f3f4f6'
       }}
     >
       <div className="absolute inset-0 bg-white/5 pointer-events-none z-0"></div>
 
       {/* Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 bg-white/20 backdrop-blur-sm border-r border-white/20 h-full p-4 shadow-sm z-20">
+      <aside className={`hidden md:flex flex-col w-64 bg-white/20 backdrop-blur-sm border-r border-white/20 h-full p-4 shadow-sm z-20 transition-opacity ${isSyncing ? 'pointer-events-none' : ''}`}>
         <div className="flex items-center gap-2 px-2 mb-8 mt-2">
           <div className="bg-blue-600 text-white p-2 rounded-lg shadow-lg">
             <Receipt size={24} />
@@ -269,10 +312,11 @@ const App: React.FC = () => {
                <span className="flex-1">{isConnected ? 'Đã kết nối' : 'Mất kết nối'}</span>
                {!isConnected && (
                  <button onClick={() => fetchData(true)} className="p-1 hover:bg-red-100/50 rounded bg-white/50">
-                   <RefreshCcw size={12} className={syncing ? "animate-spin" : ""} />
+                   <RefreshCcw size={12} className={isSyncing ? "animate-spin" : ""} />
                  </button>
                )}
             </div>
+            {isSyncing && <div className="text-blue-600 font-bold flex items-center gap-1"><Loader2 size={10} className="animate-spin"/> Đang lưu... (Cấm tắt)</div>}
           </div>
           
           <button 
@@ -283,6 +327,7 @@ const App: React.FC = () => {
                 setShowAdminLogin(true);
               }
             }}
+            disabled={isSyncing}
             className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-800 hover:bg-white/40 rounded-lg transition-colors font-medium backdrop-blur-sm"
           >
              <ImageIcon size={14} /> Đổi hình nền
@@ -302,7 +347,8 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
              {!isConnected && <WifiOff size={16} className="text-red-500" />}
-             <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-800 bg-white/30 rounded-lg">
+             {isSyncing && <Loader2 size={16} className="animate-spin text-blue-600"/>}
+             <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} disabled={isSyncing} className="p-2 text-slate-800 bg-white/30 rounded-lg disabled:opacity-50">
                {isMobileMenuOpen ? <X /> : <Menu />}
              </button>
           </div>
@@ -369,9 +415,16 @@ const App: React.FC = () => {
             {currentView === 'TRANSACTIONS' && (
               <TransactionList 
                 transactions={data.transactions}
+                suppliers={data.suppliers}
+                materials={data.materialNames}
+                units={data.units}
                 onAddTransaction={addTransaction}
                 onUpdateTransaction={updateTransaction}
                 onDeleteTransaction={deleteTransaction}
+                onAddSupplier={addSupplier}
+                onAddMaterial={addMaterialName}
+                onAddUnit={addUnit}
+                isSyncing={isSyncing}
               />
             )}
           </div>

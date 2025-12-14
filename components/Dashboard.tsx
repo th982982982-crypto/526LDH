@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { Transaction } from '../types';
-import { TrendingUp, TrendingDown, Wallet, Edit2, X, Check } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Edit2, X, Check, Truck } from 'lucide-react';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -39,17 +39,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, budget, onUp
     value: expensesByCategory[key]
   }));
 
+  // Calculate Payments by Supplier (Paid vs Unpaid)
+  const supplierStats = transactions
+    .filter(t => t.type === 'EXPENSE')
+    .reduce((acc, t) => {
+      const name = t.supplier || 'Khác';
+      if (!acc[name]) {
+        acc[name] = { paid: 0, unpaid: 0 };
+      }
+      if (t.isPaid) {
+        acc[name].paid += t.amount;
+      } else {
+        acc[name].unpaid += t.amount;
+      }
+      return acc;
+    }, {} as Record<string, { paid: number, unpaid: number }>);
+
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
-  // Helper để format số khi nhập liệu (1.000.000)
   const formatNumberInput = (val: string) => {
     if (!val) return '';
     return new Intl.NumberFormat('vi-VN').format(Number(val));
   };
 
   const handleSaveBudget = () => {
-    // Loại bỏ các ký tự không phải số trước khi lưu
     const val = Number(tempBudget);
     if (!isNaN(val)) {
       onUpdateBudget(val);
@@ -63,15 +77,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, budget, onUp
   }
 
   const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Chỉ lấy số từ input (xóa dấu chấm, phẩy, chữ)
     const rawValue = e.target.value.replace(/\D/g, '');
     setTempBudget(rawValue);
   };
 
-  // Nền trong suốt hơn nữa: bg-white/20 và giảm blur
   const cardClass = "bg-white/20 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20 flex flex-col justify-between relative group transition-all hover:bg-white/30";
   const flexCardClass = "bg-white/20 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20 flex items-center justify-between transition-all hover:bg-white/30";
   const chartCardClass = "bg-white/20 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20 h-96 transition-all hover:bg-white/30";
+  const listCardClass = "bg-white/20 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/20 transition-all hover:bg-white/30 h-96 overflow-hidden flex flex-col";
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -139,8 +152,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, budget, onUp
         </div>
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 gap-6">
+      {/* Charts & Lists Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Expense Structure */}
         <div className={chartCardClass}>
           <h3 className="text-lg font-bold text-slate-800 mb-4">Cơ Cấu Chi Phí</h3>
@@ -168,6 +181,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, budget, onUp
           ) : (
             <div className="h-full flex items-center justify-center text-slate-600 font-medium">Chưa có dữ liệu chi tiêu</div>
           )}
+        </div>
+
+        {/* Supplier Payment Summary */}
+        <div className={listCardClass}>
+           <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 bg-indigo-50/70 rounded-lg text-indigo-700">
+                <Truck size={20} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800">Tình Hình Thanh Toán</h3>
+           </div>
+           
+           <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+             {Object.entries(supplierStats).length > 0 ? (
+               Object.entries(supplierStats).map(([supplier, stats]: [string, { paid: number, unpaid: number }], index) => (
+                 <div key={index} className="p-3 bg-white/40 rounded-lg border border-white/30 flex flex-col gap-2">
+                    <div className="font-bold text-slate-800 text-sm border-b border-white/30 pb-1 mb-1">{supplier}</div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-emerald-700 font-medium">Đã trả:</span>
+                      <span className="font-bold text-emerald-800">{formatCurrency(stats.paid)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                       <span className="text-red-700 font-medium">Còn nợ:</span>
+                       <span className="font-bold text-red-800">{formatCurrency(stats.unpaid)}</span>
+                    </div>
+                 </div>
+               ))
+             ) : (
+               <div className="h-full flex flex-col items-center justify-center text-slate-600 gap-2 opacity-70">
+                 <Truck size={32} />
+                 <p>Chưa có giao dịch nào</p>
+               </div>
+             )}
+           </div>
         </div>
       </div>
     </div>
