@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { Transaction, Material } from '../types';
-import { TrendingUp, TrendingDown, Package, Wallet, Edit2, X, Check } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import { Transaction } from '../types';
+import { TrendingUp, TrendingDown, Wallet, Edit2, X, Check } from 'lucide-react';
 
 interface DashboardProps {
   transactions: Transaction[];
-  materials: Material[];
   budget: number;
   onUpdateBudget: (amount: number) => void;
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
-export const Dashboard: React.FC<DashboardProps> = ({ transactions, materials, budget, onUpdateBudget }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ transactions, budget, onUpdateBudget }) => {
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [tempBudget, setTempBudget] = useState(budget.toString());
 
@@ -39,15 +38,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, materials, b
     name: key,
     value: expensesByCategory[key]
   }));
-
-  // Top Materials by Cost
-  const topMaterials = [...materials]
-    .sort((a, b) => b.totalValue - a.totalValue)
-    .slice(0, 5)
-    .map(m => ({
-      name: m.name,
-      value: m.totalValue
-    }));
 
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
@@ -86,7 +76,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, materials, b
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className={cardClass}>
           <div className="flex justify-between items-start mb-2">
             <p className="text-sm text-slate-800 font-bold">Ngân Sách Ban Đầu</p>
@@ -147,22 +137,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, materials, b
             <TrendingUp size={24} />
           </div>
         </div>
-
-        <div className={flexCardClass}>
-          <div>
-            <p className="text-sm text-slate-800 font-bold">Tổng Giá Trị Kho</p>
-            <p className="text-2xl font-bold text-indigo-800">
-              {formatCurrency(materials.reduce((acc, m) => acc + m.totalValue, 0))}
-            </p>
-          </div>
-          <div className="p-3 bg-indigo-50/70 rounded-full text-indigo-800">
-            <Package size={24} />
-          </div>
-        </div>
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Expense Structure */}
         <div className={chartCardClass}>
           <h3 className="text-lg font-bold text-slate-800 mb-4">Cơ Cấu Chi Phí</h3>
@@ -174,7 +152,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, materials, b
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  outerRadius={80}
+                  outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
@@ -189,28 +167,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, materials, b
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex items-center justify-center text-slate-600 font-medium">Chưa có dữ liệu chi tiêu</div>
-          )}
-        </div>
-
-        {/* Top Materials */}
-        <div className={chartCardClass}>
-          <h3 className="text-lg font-bold text-slate-800 mb-4">Top Vật Liệu Tiêu Tốn Nhất</h3>
-          {topMaterials.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topMaterials} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} strokeOpacity={0.3} stroke="#334155" />
-                <XAxis type="number" hide />
-                <YAxis type="category" dataKey="name" width={100} style={{ fontSize: '12px', fontWeight: 600, fill: '#1e293b' }} />
-                <RechartsTooltip formatter={(value: number) => formatCurrency(value)} cursor={{fill: 'rgba(255,255,255,0.2)'}} contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', color: '#1e293b' }} itemStyle={{ color: '#1e293b' }}/>
-                <Bar dataKey="value" fill="#8884d8" radius={[0, 4, 4, 0]}>
-                  {topMaterials.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-full flex items-center justify-center text-slate-600 font-medium">Chưa có dữ liệu vật liệu</div>
           )}
         </div>
       </div>

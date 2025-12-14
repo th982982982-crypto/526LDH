@@ -1,4 +1,4 @@
-import { Transaction, Material } from '../types';
+import { Transaction } from '../types';
 
 // URL chính xác bạn đã cung cấp
 let API_URL = 'https://script.google.com/macros/s/AKfycbzspDgLEfKLtXQLB0YqZSQHmTWdOMr8zC1S9_MIUsvfeYvfjPnvIclohyXTyaCn-24/exec';
@@ -64,9 +64,6 @@ export const api = {
   // Gom cả Thêm và Sửa vào 1 hàm save_transaction
   saveTransaction: async (transaction: Transaction) => sendRequest('save_transaction', transaction),
   deleteTransaction: async (id: string) => sendRequest('delete_transaction', { id }),
-  
-  saveMaterial: async (material: Material) => sendRequest('save_material', material),
-  deleteMaterial: async (id: string) => sendRequest('delete_material', { id }),
   updateBudget: async (amount: number) => sendRequest('update_budget', { amount }),
   saveSetting: async (key: string, value: string) => sendRequest('save_setting', { key, value })
 };

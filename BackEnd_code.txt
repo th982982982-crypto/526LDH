@@ -56,14 +56,6 @@ function handleRequest(e) {
       deleteRow(ss.getSheetByName('Transactions'), data.id);
       result = { status: 'success' };
     }
-    else if (action === 'save_material') {
-      saveMaterial(ss, data);
-      result = { status: 'success' };
-    }
-    else if (action === 'delete_material') {
-      deleteRow(ss.getSheetByName('Materials'), data.id);
-      result = { status: 'success' };
-    }
     else if (action === 'save_setting') {
       updateSetting(ss, data.key, data.value);
       result = { status: 'success' };
@@ -85,8 +77,14 @@ function handleRequest(e) {
 }
 
 function setupSheets(ss) {
-  if (!ss.getSheetByName('Transactions')) ss.insertSheet('Transactions').appendRow(['id', 'date', 'amount', 'type', 'category', 'description', 'image']);
-  if (!ss.getSheetByName('Materials')) ss.insertSheet('Materials').appendRow(['id', 'name', 'unit', 'quantity', 'unitPrice', 'totalValue', 'supplier', 'lastUpdated', 'image']);
+  // Thêm cột quantity vào cuối nếu chưa có
+  if (!ss.getSheetByName('Transactions')) {
+    ss.insertSheet('Transactions').appendRow(['id', 'date', 'amount', 'type', 'category', 'description', 'image', 'quantity']);
+  } else {
+    // Kiểm tra xem đã có cột quantity chưa, nếu chưa (code cũ) thì không cần update header bằng code này, 
+    // nhưng code xử lý bên dưới sẽ tự thêm vào cột H (index 8)
+  }
+
   if (!ss.getSheetByName('Settings')) {
     var sSheet = ss.insertSheet('Settings');
     sSheet.appendRow(['key', 'value']);
@@ -99,11 +97,9 @@ function setupSheets(ss) {
 
 function getAllData(ss) {
   var tSheet = ss.getSheetByName('Transactions');
-  var mSheet = ss.getSheetByName('Materials');
   var sSheet = ss.getSheetByName('Settings');
   
   var tData = tSheet.getDataRange().getValues();
-  var mData = mSheet.getDataRange().getValues();
   var sData = sSheet.getDataRange().getValues();
   
   var budget = 0;
@@ -117,7 +113,7 @@ function getAllData(ss) {
     var val = sData[i][1];
     if(key == 'budget') budget = val;
     if(key == 'background_image') backgroundImage = val;
-    if(key == 'admin_user') adminUser = String(val); // Ép kiểu string để tránh lỗi nếu nhập số
+    if(key == 'admin_user') adminUser = String(val); 
     if(key == 'admin_pass') adminPass = String(val);
   }
 
@@ -134,20 +130,8 @@ function getAllData(ss) {
         type: r[3], 
         category: r[4], 
         description: r[5],
-        image: r[6] || ''
-      };
-    }),
-    materials: mData.slice(1).map(function(r) {
-      return { 
-        id: String(r[0]), 
-        name: r[1], 
-        unit: r[2], 
-        quantity: Number(r[3]), 
-        unitPrice: Number(r[4]), 
-        totalValue: Number(r[5]), 
-        supplier: r[6], 
-        lastUpdated: String(r[7]).replace(/'/g, ''),
-        image: r[8] || ''
+        image: r[6] || '',
+        quantity: r[7] ? Number(r[7]) : null // Đọc cột quantity (cột H)
       };
     })
   };
@@ -166,21 +150,8 @@ function deleteRow(sheet, id) {
 function saveTransaction(ss, data) {
   var sheet = ss.getSheetByName('Transactions');
   var allData = sheet.getDataRange().getValues();
-  var row = [data.id, "'" + data.date, data.amount, data.type, data.category, data.description, data.image || ''];
-  
-  for (var i = 1; i < allData.length; i++) {
-    if (String(allData[i][0]) === String(data.id)) {
-      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-      return;
-    }
-  }
-  sheet.appendRow(row);
-}
-
-function saveMaterial(ss, data) {
-  var sheet = ss.getSheetByName('Materials');
-  var allData = sheet.getDataRange().getValues();
-  var row = [data.id, data.name, data.unit, data.quantity, data.unitPrice, data.totalValue, data.supplier, "'" + data.lastUpdated, data.image || ''];
+  // Thêm data.quantity vào cuối
+  var row = [data.id, "'" + data.date, data.amount, data.type, data.category, data.description, data.image || '', data.quantity || ''];
   
   for (var i = 1; i < allData.length; i++) {
     if (String(allData[i][0]) === String(data.id)) {

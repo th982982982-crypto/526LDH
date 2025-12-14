@@ -18,6 +18,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
   // Form State
   const [formData, setFormData] = useState({
     amount: '',
+    quantity: '',
     type: 'EXPENSE',
     category: 'Vật liệu',
     description: '',
@@ -35,7 +36,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
 
   const handleAddNew = () => {
     setEditingId(null);
-    setFormData({ amount: '', type: 'EXPENSE', category: 'Vật liệu', description: '', date: new Date().toISOString().split('T')[0], image: '' });
+    setFormData({ amount: '', quantity: '', type: 'EXPENSE', category: 'Vật liệu', description: '', date: new Date().toISOString().split('T')[0], image: '' });
     setShowModal(true);
   };
 
@@ -43,6 +44,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
     setEditingId(t.id);
     setFormData({
       amount: t.amount.toString(),
+      quantity: t.quantity ? t.quantity.toString() : '',
       type: t.type,
       category: t.category,
       description: t.description,
@@ -52,7 +54,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
     setShowModal(true);
   };
 
-  // Nền trong suốt hơn nữa: bg-white/20 và giảm blur
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -61,7 +62,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 600; // Giới hạn chiều rộng
+          const MAX_WIDTH = 600; 
           const scaleSize = MAX_WIDTH / img.width;
           canvas.width = MAX_WIDTH;
           canvas.height = img.height * scaleSize;
@@ -69,7 +70,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
           
-          // Giảm chất lượng xuống 0.6 để giảm dung lượng file
           const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
           setFormData(prev => ({ ...prev, image: dataUrl }));
         };
@@ -82,9 +82,11 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const amount = Number(formData.amount);
+    const quantity = formData.quantity ? Number(formData.quantity) : undefined;
     
     const transactionData = {
       amount,
+      quantity,
       type: formData.type as 'INCOME' | 'EXPENSE',
       category: formData.category,
       description: formData.description,
@@ -166,8 +168,9 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
               <th className="px-4 py-3 border-b border-white/20">Ngày</th>
               <th className="px-4 py-3 border-b border-white/20">Ảnh</th>
               <th className="px-4 py-3 border-b border-white/20">Nội dung</th>
+              <th className="px-4 py-3 border-b border-white/20">SL</th>
               <th className="px-4 py-3 border-b border-white/20">Danh mục</th>
-              <th className="px-4 py-3 border-b border-white/20 text-right">Số tiền</th>
+              <th className="px-4 py-3 border-b border-white/20 text-right">Tổng Tiền</th>
               <th className="px-4 py-3 border-b border-white/20 text-right w-24">Thao tác</th>
             </tr>
           </thead>
@@ -186,6 +189,9 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                 </td>
                 <td className="px-4 py-3">
                   <div className="font-bold text-slate-900">{t.description}</div>
+                </td>
+                <td className="px-4 py-3 font-medium text-slate-800">
+                  {t.quantity ? t.quantity : '-'}
                 </td>
                 <td className="px-4 py-3">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/60 text-slate-800 border border-white/30">
@@ -229,7 +235,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
         )}
       </div>
 
-      {/* Modal - giữ nguyên bg-white/95 để dễ nhìn khi nhập liệu */}
+      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-2xl w-full max-w-md p-6 animate-fade-in border border-white/50 max-h-[90vh] overflow-y-auto">
@@ -259,19 +265,31 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                 </div>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Số tiền (VNĐ)</label>
-                <input 
-                  type="text" 
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-slate-900 font-semibold"
-                  placeholder="0"
-                  value={formatNumberInput(formData.amount)}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    setFormData({...formData, amount: val});
-                  }}
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                 <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Tổng tiền (VNĐ)</label>
+                    <input 
+                      type="text" 
+                      className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-slate-900 font-semibold"
+                      placeholder="0"
+                      value={formatNumberInput(formData.amount)}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        setFormData({...formData, amount: val});
+                      }}
+                      required
+                    />
+                 </div>
+                 <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Số lượng (nếu có)</label>
+                    <input 
+                      type="number" 
+                      className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-slate-900"
+                      placeholder="VD: 50"
+                      value={formData.quantity}
+                      onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+                    />
+                 </div>
               </div>
 
               <div>
@@ -294,7 +312,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                 <input 
                   type="text" 
                   className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-slate-900"
-                  placeholder="VD: Mua 50 bao xi măng"
+                  placeholder="VD: Mua xi măng"
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
                   required

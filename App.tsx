@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Receipt, Package, Menu, X, Loader2, RefreshCcw, Wifi, WifiOff, Settings, AlertTriangle, Image as ImageIcon, Lock, UploadCloud, Eye, EyeOff, Link as LinkIcon, CheckCircle2 } from 'lucide-react';
+import { LayoutDashboard, Receipt, Menu, X, Loader2, RefreshCcw, Wifi, WifiOff, AlertTriangle, Image as ImageIcon, Lock, UploadCloud, Eye, EyeOff, Link as LinkIcon, CheckCircle2 } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { TransactionList } from './components/TransactionList';
-import { InventoryList } from './components/InventoryList';
-import { Transaction, Material, AppData, View } from './types';
+import { Transaction, AppData, View } from './types';
 import { api, setApiUrl, getApiUrl } from './services/api';
 
 const INITIAL_DATA: AppData = {
   budget: 0,
   transactions: [],
-  materials: [],
   adminUser: 'admin', 
   adminPass: 'Voi123'
 };
@@ -27,9 +25,6 @@ const App: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
-  
-  const [showSettings, setShowSettings] = useState(false);
-  const [customUrl, setCustomUrl] = useState(getApiUrl());
   
   // Ưu tiên cao nhất: Lấy từ LocalStorage ngay khi khởi tạo App
   const [backgroundImage, setBackgroundImage] = useState(() => {
@@ -56,7 +51,6 @@ const App: React.FC = () => {
       const response = await api.getData();
       setData({
         transactions: response.transactions || [],
-        materials: response.materials || [],
         budget: response.budget || 0,
         adminUser: response.adminUser || 'admin',
         adminPass: response.adminPass || 'Voi123'
@@ -90,16 +84,6 @@ const App: React.FC = () => {
       }
     }
   }, [showUploadBg, backgroundImage]);
-
-  const handleUpdateUrl = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (customUrl.trim()) {
-      setApiUrl(customUrl.trim());
-      setShowSettings(false);
-      setData(INITIAL_DATA);
-      fetchData(); 
-    }
-  };
 
   const handleApiCall = async (apiCall: () => Promise<any>, onSuccess: () => void) => {
     setSyncing(true);
@@ -224,29 +208,6 @@ const App: React.FC = () => {
     handleApiCall(() => api.deleteTransaction(id), () => setData(prev => ({...prev, transactions: backup})));
   };
 
-  const addMaterial = (m: Omit<Material, 'id' | 'totalValue'>) => {
-    const newMat: Material = { 
-      ...m, 
-      id: Math.random().toString(36).substr(2, 9),
-      totalValue: m.quantity * m.unitPrice
-    };
-    setData(prev => ({ ...prev, materials: [...prev.materials, newMat] }));
-    handleApiCall(() => api.saveMaterial(newMat), () => {});
-  };
-
-  const updateMaterial = (m: Material) => {
-    setData(prev => ({
-      ...prev,
-      materials: prev.materials.map(mat => mat.id === m.id ? m : mat)
-    }));
-    handleApiCall(() => api.saveMaterial(m), () => {});
-  };
-
-  const deleteMaterial = (id: string) => {
-    setData(prev => ({ ...prev, materials: prev.materials.filter(m => m.id !== id) }));
-    handleApiCall(() => api.deleteMaterial(id), () => {});
-  };
-
   const updateBudget = (newBudget: number) => {
     setData(prev => ({ ...prev, budget: newBudget }));
     handleApiCall(() => api.updateBudget(newBudget), () => {});
@@ -287,14 +248,13 @@ const App: React.FC = () => {
             <Receipt size={24} />
           </div>
           <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-700 drop-shadow-sm">
-            526 Lê Đại Hành
+            256 Lê Đại Hành
           </h1>
         </div>
         
         <nav className="flex-1 space-y-2">
           <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Tổng Quan" />
           <NavItem view="TRANSACTIONS" icon={Receipt} label="Sổ Thu Chi" />
-          <NavItem view="INVENTORY" icon={Package} label="Kho Vật Liệu" />
         </nav>
 
         <div className="mt-auto pt-6 border-t border-white/30 space-y-2">
@@ -327,13 +287,6 @@ const App: React.FC = () => {
           >
              <ImageIcon size={14} /> Đổi hình nền
           </button>
-
-          <button 
-            onClick={() => setShowSettings(!showSettings)}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-800 hover:bg-white/40 rounded-lg transition-colors font-medium backdrop-blur-sm"
-          >
-            <Settings size={14} /> Cấu hình API
-          </button>
         </div>
       </aside>
 
@@ -359,7 +312,6 @@ const App: React.FC = () => {
           <div className="md:hidden absolute inset-0 bg-white/80 backdrop-blur-xl z-30 pt-16 px-4 space-y-2 animate-fade-in">
              <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Tổng Quan" />
              <NavItem view="TRANSACTIONS" icon={Receipt} label="Sổ Thu Chi" />
-             <NavItem view="INVENTORY" icon={Package} label="Kho Vật Liệu" />
              <hr className="my-2 border-slate-300"/>
              <button 
                onClick={() => { 
@@ -370,12 +322,6 @@ const App: React.FC = () => {
                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-800 font-medium"
              >
                <ImageIcon size={20} /> Đổi hình nền
-             </button>
-             <button 
-               onClick={() => { setShowSettings(true); setIsMobileMenuOpen(false); }}
-               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-800 font-medium"
-             >
-               <Settings size={20} /> Cấu hình API
              </button>
           </div>
         )}
@@ -416,7 +362,6 @@ const App: React.FC = () => {
             {currentView === 'DASHBOARD' && (
               <Dashboard 
                 transactions={data.transactions} 
-                materials={data.materials} 
                 budget={data.budget} 
                 onUpdateBudget={updateBudget}
               />
@@ -427,14 +372,6 @@ const App: React.FC = () => {
                 onAddTransaction={addTransaction}
                 onUpdateTransaction={updateTransaction}
                 onDeleteTransaction={deleteTransaction}
-              />
-            )}
-            {currentView === 'INVENTORY' && (
-              <InventoryList 
-                materials={data.materials}
-                onAddMaterial={addMaterial}
-                onUpdateMaterial={updateMaterial}
-                onDeleteMaterial={deleteMaterial}
               />
             )}
           </div>
@@ -558,58 +495,6 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
-
-        {/* Settings Modal */}
-        {showSettings && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white/85 backdrop-blur-xl rounded-xl shadow-2xl w-full max-w-md p-6 animate-fade-in border border-white/50">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-slate-800">Cấu hình Kết nối</h3>
-                <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-slate-700">
-                  <X size={20} />
-                </button>
-              </div>
-              
-              <form onSubmit={handleUpdateUrl} className="flex flex-col gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Google Web App URL</label>
-                  <input 
-                    type="text" 
-                    value={customUrl}
-                    onChange={(e) => setCustomUrl(e.target.value)}
-                    placeholder="https://script.google.com/macros/s/..."
-                    className="w-full p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white/80 text-slate-900"
-                  />
-                </div>
-                
-                <div className="bg-blue-50/70 p-4 rounded-lg border border-blue-100 text-xs text-blue-800 space-y-2">
-                  <p className="font-bold flex items-center gap-1"><AlertTriangle size={12}/> Lưu ý quan trọng:</p>
-                  <ul className="list-disc pl-4 space-y-1">
-                    <li>Nếu vừa cập nhật code backend, hãy nhớ <strong>Deploy lại</strong> (New Deployment) trong Google Script.</li>
-                    <li>Code mới hỗ trợ lưu hình nền vào Sheet "Settings".</li>
-                  </ul>
-                </div>
-
-                <div className="flex gap-3 mt-2">
-                   <button 
-                    type="button"
-                    onClick={() => setShowSettings(false)}
-                    className="flex-1 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium"
-                  >
-                    Đóng
-                  </button>
-                  <button 
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
-                  >
-                    Lưu & Kết nối lại
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
       </main>
     </div>
   );
